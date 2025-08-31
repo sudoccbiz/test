@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Shiny Barcode Studio — PDF417 / QR / Code128</title>
+<link rel="preconnect" href="https://unpkg.com">
+<style>
+  :root{
+    --bg1:#0f0c29; --bg2:#302b63; --bg3:#24243e;
+    --accent:#00d4ff; --accent2:#7a5cff; --danger:#ff4d6d; --ok:#30e88f;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+    background: radial-gradient(1200px 800px at 20% 10%, rgba(122,92,255,.35), transparent 60%),
+                radial-gradient(1000px 700px at 80% 90%, rgba(0,212,255,.35), transparent 60%),
+                linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3));
+    color:#eef0ff; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .shell{
+    width:min(1100px,100%); backdrop-filter: blur(16px) saturate(140%);
+    background: rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.05);
+    border-radius: 24px; padding: 28px; position:relative; overflow:hidden;
+  }
+  .shine{
+    position:absolute; inset:-2px; pointer-events:none;
+    background: conic-gradient(from 180deg at 50% 50%, rgba(255,255,255,.15), transparent 30%, rgba(255,255,255,.08), transparent 70%);
+    mask: radial-gradient(110% 110% at 50% 50%, #0000 40%, #000 70%);
+  }
+  header{display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  header h1{font-size: clamp(20px, 3vw, 28px); margin:0; letter-spacing:.3px}
+  .tag{font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.2);}
+  .grid{
+    display:grid; grid-template-columns: 1.1fr .9fr; gap:22px;
+  }
+  @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
+  .card{
+    background: rgba(12,10,30,.55);
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:16px; padding:18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
+  label{font-size:12px; opacity:.9; margin-bottom:6px; display:block}
+  input, textarea, select{
+    width:100%; color:#eaf2ff; background:#17152c; border:1px solid rgba(255,255,255,.16);
+    border-radius:12px; padding:12px 14px; outline:none; transition:.2s border,.2s box-shadow;
+  }
+  textarea{min-height:110px; resize:vertical}
+  input:focus, textarea:focus, select:focus{
+    border-color: rgba(0,212,255,.7); box-shadow: 0 0 0 3px rgba(0,212,255,.2);
+  }
+  .controls{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px}
+  button{
+    appearance:none; border:none; border-radius:12px; padding:12px 16px; font-weight:600;
+    background: linear-gradient(180deg, var(--accent), var(--accent2));
+    color:#0b0b1a; cursor:pointer; transition: transform .08s ease, filter .2s ease; box-shadow: 0 10px 30px rgba(0,212,255,.25);
+  }
+  button:hover{filter:brightness(1.05)}
+  button:active{transform:translateY(1px) scale(.995)}
+  .btn-ghost{
+    background:transparent; color:#e6e6ff; border:1px solid rgba(255,255,255,.2);
+    box-shadow:none;
+  }
+  .preview{
+    display:flex; align-items:center; justify-content:center; min-height:340px; background:#0f0d24;
+    border:1px dashed rgba(255,255,255,.14); border-radius:14px;
+  }
+  .hint{font-size:12px; opacity:.8; margin-top:6px}
+  .note{font-size:12px; opacity:.75}
+  .pill{
+    display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px;
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.16);
+  }
+  .ok{color:var(--ok)} .danger{color:var(--danger)}
+  footer{margin-top:14px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12px; opacity:.85}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="shine"></div>
+    <header>
+      <h1>Shiny Barcode Studio</h1>
+      <div class="tag pill">Client-side • No backend</div>
+    </header>
+
+    <div class="grid">
+      <!-- Left: Form -->
+      <section class="card">
+        <div class="row">
+          <div>
+            <label for="symb">Symbology</label>
+            <select id="symb" aria-label="Symbology">
+              <option value="pdf417" selected>PDF417 (stacked)</option>
+              <option value="qrcode">QR Code</option>
+              <option value="code128">Code 128</option>
+              <option value="datamatrix">Data Matrix</option>
+              <option value="azteccode">Aztec</option>
+            </select>
+          </div>
+          <div>
+            <label for="scale">Module Scale (1–8)</label>
+            <input id="scale" type="number" min="1" max="8" value="4" />
+          </div>
+        </div>
+
+        <div class="row3" id="pdf417-opts">
+          <div>
+            <label for="pdfCols">PDF417 Columns (0=auto)</label>
+            <input id="pdfCols" type="number" min="0" max="30" value="0" />
+          </div>
+          <div>
+            <label for="pdfErr">Error Level (0–8)</label>
+            <input id="pdfErr" type="number" min="0" max="8" value="2" />
+          </div>
+          <div>
+            <label for="margin">Quiet Zone (px)</label>
+            <input id="margin" type="number" min="0" max="50" value="10" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <label for="payload">Data to encode</label>
+          <textarea id="payload" placeholder="Type any text/data here… (tickets, inventory IDs, membership numbers, etc.)"></textarea>
+          <div class="hint">This app encodes **generic data only**. Do not enter government ID or AAMVA/Real-ID data.</div>
+        </div>
+
+        <div class="controls">
+          <button id="btn-generate" type="button">Generate</button>
+          <button id="btn-download" class="btn-ghost" type="button">Download PNG</button>
+          <span id="status" class="pill"><span>Ready</span></span>
+        </div>
+      </section>
+
+      <!-- Right: Preview -->
+      <section class="card">
+        <label>Preview</label>
+        <div class="preview">
+          <canvas id="canvas" width="1000" height="580" role="img" aria-label="Barcode preview"></canvas>
+        </div>
+        <div class="hint">Tip: Larger scale and margin improve scannability. Keep good contrast (dark bars on light background).</div>
+      </section>
+    </div>
+
+    <footer>
+      <div class="note">Legal note: This tool is for **generic barcodes**. It must **not** be used to produce or mimic government IDs or AAMVA/Real-ID data.</div>
+      <div class="note">© 2025 Shiny Barcode Studio</div>
+    </footer>
+  </div>
+
+  <!-- bwip-js: barcode encoder/render in the browser -->
+  <script src="https://unpkg.com/bwip-js/dist/bwip-js-min.js"></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    const canvas = $('canvas');
+    const statusPill = $('status');
+
+    function setStatus(text, kind='ok'){
+      statusPill.textContent = text;
+      statusPill.classList.remove('ok','danger');
+      statusPill.classList.add(kind === 'error' ? 'danger' : 'ok');
+    }
+
+    function isProhibitedPayload(t){
+      // Extremely simple guardrails: reject strings that look like AAMVA headers or DL/ID fields.
+      // This is NOT a classifier—just prevents obvious misuse.
+      const redFlags = [
+        'ANSI ', 'AAMVA', 'DLDAQ', 'DCS', 'DAC', 'DAD', 'DBB', 'DBA', 'DAG', 'DAI', 'DAJ', 'DAK', 'DCF', 'DD', 'ZWA'
+      ];
+      const upper = (t||'').toUpperCase();
+      return redFlags.some(tag => upper.includes(tag));
+    }
+
+    function render(){
+      const text = $('payload').value || '';
+      const symb = $('symb').value;
+      const scale = Math.max(1, Math.min(8, parseInt($('scale').value || 4, 10)));
+      const margin = Math.max(0, Math.min(50, parseInt($('margin').value || 10, 10)));
+
+      if (isProhibitedPayload(text)) {
+        setStatus('Prohibited data pattern detected. Enter generic/non-ID data.', 'error');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        return;
+      }
+
+      const opts = {
+        bcid: symb,       // Barcode type
+        text,             // Data to encode
+        scale,            // 1..8
+        includetext: false,
+        paddingwidth: margin,
+        paddingheight: margin
+      };
+
+      if (symb === 'pdf417') {
+        const cols = Math.max(0, Math.min(30, parseInt($('pdfCols').value || 0, 10)));
+        const err = Math.max(0, Math.min(8, parseInt($('pdfErr').value || 2, 10)));
+        if (cols > 0) opts.columns = cols;
+        opts.eclevel = err; // error correction level 0..8
+      }
+
+      try{
+        bwipjs.toCanvas(canvas, opts);
+        setStatus('Rendered ✓','ok');
+      }catch(err){
+        setStatus('Error: ' + (err && err.message ? err.message : String(err)), 'error');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+      }
+    }
+
+    $('btn-generate').addEventListener('click', render);
+    $('symb').addEventListener('change', () => {
+      document.getElementById('pdf417-opts').style.display =
+        $('symb').value === 'pdf417' ? 'grid' : 'none';
+    });
+
+    $('btn-download').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'barcode.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+
+    // initial view
+    document.getElementById('pdf417-opts').style.display = 'grid';
+    setStatus('Ready');
+  </script>
+</body>
+</html>
